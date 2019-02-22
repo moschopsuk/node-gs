@@ -1,0 +1,20 @@
+[package]
+name = "node-gs"
+version = "0.1.0"
+authors = ["Luke Moscrop <luke.moscrop@bbc.co.uk>"]
+license = "MIT"
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "node_gs"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+neon = "0.2.0"
+glib = { git="https://github.com/gtk-rs/glib"}
+gstreamer = { git="https://github.com/sdroege/gstreamer-rs"}
+gstreamer-base = { git="https://github.com/sdroege/gstreamer-rs"}
