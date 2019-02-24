@@ -22,7 +22,10 @@ use gst::prelude::*;
 /// include different types of data or be replaced with a more simple type,
 /// e.g., `Vec<u8>`.
 pub enum Event {
-    Tick { error: String },
+    Error { message: String, stack: String },
+    Warning { message: String },
+    StateChanged { state: gst::State },
+    Eos { }
 }
 
 /// Placeholder to represent work being done on a Rust thread. It could be
@@ -49,6 +52,7 @@ fn event_thread(pipeline: gst::Element, shutdown_rx: mpsc::Receiver<()>) -> mpsc
 
         let mainloop = glib::MainLoop::new(None, false);
         let mainloop_clone = mainloop.clone();
+        let pipeline_clone = pipeline.clone();
         let bus = pipeline.get_bus().unwrap();
 
         bus.add_watch(move |_, msg| {
@@ -57,21 +61,26 @@ fn event_thread(pipeline: gst::Element, shutdown_rx: mpsc::Receiver<()>) -> mpsc
             let main_loop = &mainloop_clone;
             match msg.view() {
                 MessageView::Eos(..) => {
-                    println!("received eos");
+                    tx.send(Event::Eos { }).expect("Send failed");
                     // An EndOfStream event was sent to the pipeline, so we tell our main loop
                     // to stop execution here.
-                    main_loop.quit()
+                    main_loop.quit();
+                }
+                MessageView::StateChanged(state) => {
+                    if state
+                        .get_src()
+                        .map(|s| s == pipeline_clone)
+                        .unwrap_or(false)
+                    {
+                        let new_state = state.get_current();
+                        tx.send(Event::StateChanged { state: new_state }).expect("Send failed");
+                    }
+                }
+                MessageView::Warning(warning) => {
+                    tx.send(Event::Warning { message: warning.get_error().to_string() }).expect("Send failed");
                 }
                 MessageView::Error(err) => {
-                    println!(
-                        "Error from {:?}: {} ({:?})",
-                        err.get_src().map(|s| s.get_path_string()),
-                        err.get_error(),
-                        err.get_debug()
-                    );
-
-                    tx.send(Event::Tick { error: err.get_error().to_string() }).expect("Send failed");
- 
+                    tx.send(Event::Error { message: err.get_error().to_string(), stack: format!("{:?}", err.get_debug().unwrap()) }).expect("Send failed");
                     main_loop.quit();
                 }
                 _ => (),
@@ -146,12 +155,33 @@ impl Task for EventEmitterTask {
 
         // Creates an object of the shape `{ "event": string, ...data }`
         match event {
-            Event::Tick { error } => {
-                let event_name = cx.string("tick");
-                let event_error = cx.string(error);
+            Event::Error { message, stack } => {
+                let event_name = cx.string("error");
+                let event_message = cx.string(message);
+                let event_stack = cx.string(stack);
 
                 o.set(&mut cx, "event", event_name)?;
-                o.set(&mut cx, "error", event_error)?;
+                o.set(&mut cx, "message", event_message)?;
+                o.set(&mut cx, "stack", event_stack)?;
+            }
+            Event::Warning { message } => {
+                let event_name = cx.string("warning");
+                let event_message = cx.string(message);
+
+                o.set(&mut cx, "event", event_name)?;
+                o.set(&mut cx, "message", event_message)?;
+            }
+            Event::StateChanged { state } => {
+                let event_name = cx.string("stateChanged");
+                let event_state = cx.string(format!("{:?}", state).to_string());
+
+                o.set(&mut cx, "event", event_name)?;
+                o.set(&mut cx, "state", event_state)?;
+            }
+            Event::Eos  {} => {
+                let event_name = cx.string("eos");
+
+                o.set(&mut cx, "event", event_name)?;
             }
         }
 
