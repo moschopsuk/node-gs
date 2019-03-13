@@ -23,7 +23,6 @@ use gst::prelude::*;
 /// e.g., `Vec<u8>`.
 pub enum Event {
     Error { message: String, stack: String },
-    Warning { message: String },
     StateChanged { state: gst::State },
     Eos { }
 }
@@ -75,9 +74,6 @@ fn event_thread(pipeline: gst::Element, shutdown_rx: mpsc::Receiver<()>) -> mpsc
                         let new_state = state.get_current();
                         tx.send(Event::StateChanged { state: new_state }).expect("Send failed");
                     }
-                }
-                MessageView::Warning(warning) => {
-                    tx.send(Event::Warning { message: warning.get_error().to_string() }).expect("Send failed");
                 }
                 MessageView::Error(err) => {
                     tx.send(Event::Error { message: err.get_error().to_string(), stack: format!("{:?}", err.get_debug().unwrap()) }).expect("Send failed");
@@ -164,13 +160,6 @@ impl Task for EventEmitterTask {
                 o.set(&mut cx, "message", event_message)?;
                 o.set(&mut cx, "stack", event_stack)?;
             }
-            Event::Warning { message } => {
-                let event_name = cx.string("warning");
-                let event_message = cx.string(message);
-
-                o.set(&mut cx, "event", event_name)?;
-                o.set(&mut cx, "message", event_message)?;
-            }
             Event::StateChanged { state } => {
                 let event_name = cx.string("stateChanged");
                 let event_state = cx.string(format!("{:?}", state).to_string());
@@ -213,7 +202,7 @@ declare_types! {
             let (shutdown, shutdown_rx) = mpsc::channel();
 
             let pipeline_string = cx.argument::<JsString>(0)?.value();
-            let pipeline = gst::parse_launch(&pipeline_string).unwrap();
+            let pipeline = gst::parse_launch(&pipeline_string).map_err(|e| panic!(e.to_string()))?;
 
             // Start work in a separate thread
             let rx = event_thread(pipeline, shutdown_rx);

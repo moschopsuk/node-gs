@@ -6,11 +6,13 @@
   "author": "Luke Moscrop <luke.moscrop@bbc.co.uk>",
   "license": "MIT",
   "dependencies": {
+    "jest": "^24.1.0",
     "log-symbols": "^2.2.0",
     "neon-cli": "^0.2.0"
   },
   "scripts": {
     "install": "neon build",
-    "start": "node lib/index.js"
+    "start": "node lib/index.js",
+    "test": "jest"
   }
 }
