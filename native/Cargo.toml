@@ -11,10 +11,10 @@ name = "node_gs"
 crate-type = ["dylib"]
 
 [build-dependencies]
-neon-build = "0.2.0"
+neon-build = "0.4"
 
 [dependencies]
-neon = "0.2.0"
-glib = { git="https://github.com/gtk-rs/glib"}
-gstreamer = { git="https://github.com/sdroege/gstreamer-rs"}
-gstreamer-base = { git="https://github.com/sdroege/gstreamer-rs"}
+neon = "0.4"
+glib = "0.9"
+gstreamer = "0.15"
+gstreamer-base = "0.15"
