@@ -14,7 +14,7 @@ crate-type = ["dylib"]
 neon-build = "0.4"
 
 [dependencies]
-neon = "0.4"
+neon = "0.10"
 glib = "0.9"
 gstreamer = "0.15"
 gstreamer-base = "0.15"
